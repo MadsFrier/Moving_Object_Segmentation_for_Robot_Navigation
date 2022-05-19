@@ -9,6 +9,10 @@ sumRecall = 0
 gt = cv.imread('testFrame/gtTest.png', 0)
 pred = cv.imread('testFrame/predTest.png', 0)
 
+# threshold ground truth and prediction to avoid pixels with values != 0, 255
+dst, pred = cv.threshold(pred, 5, 255, cv.THRESH_BINARY)
+dst1, gt = cv.threshold(gt, 5, 255, cv.THRESH_BINARY)
+
 (h, w) = gt.shape[:2]  # convert image to 2D matrix
 
 # initialize all true and false positives and negative

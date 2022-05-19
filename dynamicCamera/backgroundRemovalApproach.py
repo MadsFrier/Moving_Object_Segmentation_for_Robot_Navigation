@@ -1,24 +1,6 @@
+#import libraries
 import numpy as np
 import cv2 as cv
-import matplotlib.pyplot as plt
-
-fig, ax = plt.subplots()
-ax.set_title('Vector Field Histogram')
-ax.set_xlabel('Length')
-ax.set_ylabel('Frequency')
-
-bins = 75
-
-lw = 3
-alpha = 0.5
-lineX, = ax.plot(np.arange(bins), np.zeros((bins,)), c='g', lw=lw, alpha=alpha)
-lineY, = ax.plot(np.arange(bins), np.zeros((bins,)), c='r', lw=lw, alpha=alpha)
-
-ax.set_xlim(0, bins - 1)
-ax.set_ylim(0, 0.05)
-
-plt.ion()
-plt.show()
 
 
 def draw_flow(img, flow, step=12):
