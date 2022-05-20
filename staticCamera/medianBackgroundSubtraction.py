@@ -1,9 +1,8 @@
 # import libraries
 import cv2 as cv
 import numpy as np
-import time
 
-cap = cv.VideoCapture('../softwareDesign/groundtruth/outside1.mp4')  # capture webcam footage
+cap = cv.VideoCapture('../staticCamera/videos/outside1.mp4')  # capture webcam footage
 # "../softwareDesign/media/vtest.avi"  # video
 
 updateVal = 100  # background update frequency
@@ -19,7 +18,6 @@ frames = []  # make array to hold frames to calc median frame
 
 while cap.isOpened():
 
-    startTime1 = time.time()
     ret, frame = cap.read()  # read one frame
     frames.append(frame)  # add frame to array
     x = x + 1  # keep count of frame number
@@ -28,20 +26,13 @@ while cap.isOpened():
         medianFrame = frame
         grayMedianFrame = cv.cvtColor(medianFrame, cv.COLOR_BGR2GRAY)
 
-    stopTime1 = time.time()
-
     if x > updateVal + n:  # takes median of all frames in frames array
         frames = frames[::skipVal]  # the amount of frames to skip
         print(len(frames))
-        medianTime = time.time()
         medianFrame = np.median(frames, axis=0).astype(dtype=np.uint8)
         grayMedianFrame = cv.cvtColor(medianFrame, cv.COLOR_BGR2GRAY)  # grayscale median frame
         frames = []
         n = n + updateVal
-        medianStopTime = time.time()
-        print(f"The execution time is: {medianStopTime - medianTime}")
-
-    startTime2 = time.time()
 
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)  # grayscale frame
 
@@ -77,15 +68,6 @@ while cap.isOpened():
     cv.imshow('w/ mask', applyMask)  # show mask frame
     cv.imshow('original', frame)  # show estimated background
     cv.imshow('inv', inv)  # show estimated background
-
-    stopTime2 = time.time()
-    # print(f"The execution time is: {(stopTime1 - startTime1) + (stopTime2 - startTime2)}")
-
-    if x == 320:
-        cv.imwrite('groundTruth/outside1Tests/predTest.png', inv)
-
-        print('Done saving desired frame!')
-
 
     if cv.waitKey(25) & 0xFF == ord('q'):  # 25 msec until next frame
         break

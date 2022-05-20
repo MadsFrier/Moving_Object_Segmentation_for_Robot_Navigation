@@ -1,33 +1,29 @@
+# import libraries
 import numpy as np
 import cv2 as cv
 from sklearn.cluster import KMeans
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from matplotlib import pyplot as plt
 from numpy import load
 from imutils import perspective
-from imutils import contours
 import imutils
-from scipy.spatial import distance as dist
 import collections
 
+# set the pixels that grassfire algorithm burns to 255
 current_id = 255
+
 
 # find midpoint of object
 def midpoint(ptA, ptB):
-    return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
+    return (ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5
 
 
-allPath = 'C:/Users/madsf/PycharmProjects/Moving Object Segmentation/softwareDesign/turtleBot/allVids/'
-# C:/Users/madsf/PycharmProjects/Moving Object Segmentation/softwareDesign/turtleBot/allVids
-
+# paths to directory and files
+allPath = '../dynamicCamera/videos/npyFiles/'
 depthVid = load(allPath + 'depth.npy')
 normVid = load(allPath + 'norm.npy')
 rgbVid = load(allPath + 'rgb.npy')
 
 
+# outputs optical flow as binary image and also does all the calculations for depth optical flow region growing
 def draw_hsv(flow, img, depth):
     h, w = flow.shape[:2]
     fx, fy = flow[:, :, 0], flow[:, :, 1]
@@ -42,6 +38,7 @@ def draw_hsv(flow, img, depth):
     grayNew = cv.cvtColor(bgr, cv.COLOR_BGR2GRAY)
     dst, thresh = cv.threshold(grayNew, 5, 255, cv.THRESH_BINARY)
 
+    # find edges in optical flow frame
     edge = cv.Canny(thresh, 50, 100)
 
     # dilate twice and erode to close gaps in edges (closing)
@@ -52,8 +49,10 @@ def draw_hsv(flow, img, depth):
     cnts = cv.findContours(edge, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
 
-    if cnts != []:
+    # only executes if there is contours in frame
+    if cnts:
 
+        # only returns the largest contour
         c = max(cnts, key=cv.contourArea)
 
         orig = thresh.copy()
@@ -67,6 +66,7 @@ def draw_hsv(flow, img, depth):
         (tltrX, tltrY) = midpoint(tl, tr)
         (blbrX, blbrY) = midpoint(bl, br)
 
+        # find center point for contour
         [centerX, centerY] = midpoint((tltrX, tltrY), (blbrX, blbrY))
 
         centerX = int(centerX)
@@ -74,6 +74,7 @@ def draw_hsv(flow, img, depth):
 
         TARGET = (centerX, centerY)
 
+        # find the closest white pixel to the center point and use this point as seedpoint for region growing
         def find_nearest_white(img, target):
             nonzero = cv.findNonZero(img)
             distances = np.sqrt((nonzero[:, :, 0] - target[0]) ** 2 + (nonzero[:, :, 1] - target[1]) ** 2)
@@ -87,6 +88,7 @@ def draw_hsv(flow, img, depth):
 
         burn_queue = collections.deque()
 
+        # grassfire algorithm on depth map
         if depth[seedPoint[0][0]][seedPoint[0][1]] != 0:
             def ignite_fire(mask, pixel_x, pixel_y, depthInterval):
                 burn_queue.append((pixel_x, pixel_y))
@@ -120,23 +122,24 @@ def draw_hsv(flow, img, depth):
             depth[depth != 255] = 0
 
             cv.imshow('depth', depth)
-            cv.imwrite('clusterMask1.png', depth)
-            cv.imwrite('clusterRGB1.png', img)
             cv.waitKey(0)
 
     return thresh
 
 
+# save the first frame as optical flow need 2 frames to work
 prev = rgbVid[0, :, :]
 
 prevgray = cv.cvtColor(prev, cv.COLOR_BGR2GRAY)
 
 h, w = normVid.shape[:2]
 
+# loop through the frames, starting at 41 to show segmentation example
 for i in range(41, h):  # 41 chair 79 person
     img = rgbVid[i, :, :]
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
+    #calculate optical flow
     flow = cv.calcOpticalFlowFarneback(prevgray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
 
     copy = flow.copy()
@@ -147,6 +150,8 @@ for i in range(41, h):  # 41 chair 79 person
     vC = np.ravel(vC)
     vC = vC.reshape(-1, 1)
 
+    # clustering is in the code, but is does not do anything useful, as it outputs almost the same as optical flow.
+    # It is here because this is a proof of concept, and we did not bother removing it
     depthC = depthVid[i, :, :]
     depthC = np.ravel(depthC)
     depthC = depthC.reshape(-1, 1)
@@ -209,12 +214,13 @@ for i in range(41, h):  # 41 chair 79 person
     clustflow = cv.merge(([xcopy, y]))
     prevgray = gray
 
-    # cv.imshow('flow HSV', draw_hsv(flow, img, depthVid[i, :, :]))
+    # show results
     cv.imshow('flow Clustering', draw_hsv(clustflow, img, depthVid[i, :, :]))
-    # cv.imshow('norm', normVid[i, :, :])
+    cv.imshow('norm', normVid[i, :, :])
     cv.imshow('rgb', rgbVid[i, :, :])
     cv.waitKey(30)
 
+    # print current frame
     print(i)
     key = cv.waitKey(5)
     if key == ord('q'):
